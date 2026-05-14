@@ -1,10 +1,12 @@
-# Credenciales Binance Testnet
-API_KEY = "TU_API_KEY"
-SECRET_KEY = "TU_SECRET_KEY"
+import os
+
+# Credenciales - se leen desde variables de entorno (Railway)
+API_KEY = os.environ.get("API_KEY", "")
+SECRET_KEY = os.environ.get("SECRET_KEY", "")
 
 # Configuración del bot
-SYMBOL = "BTC/USDT"        # Par a operar
-LOWER_PRICE = 79000      # Precio mínimo de la grilla
-UPPER_PRICE = 80000      # Precio máximo de la grilla
-GRID_LEVELS = 5           # Cantidad de niveles
-TOTAL_CAPITAL = 1000       # USDT a usar (es testnet, no es real)
+SYMBOL = "BTC/USDT"
+LOWER_PRICE = 79000
+UPPER_PRICE = 81000
+GRID_LEVELS = 5
+TOTAL_CAPITAL = 1000

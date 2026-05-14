@@ -7,7 +7,7 @@ from openpyxl import load_workbook
 import os
 
 # Conexión a Binance (solo lectura de precios)
-exchange = ccxt.binance()
+exchange = ccxt.bingx()
 
 # Archivo Excel
 ARCHIVO_EXCEL = "operaciones.xlsx"

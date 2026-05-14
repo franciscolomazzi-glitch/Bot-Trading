@@ -7,17 +7,14 @@ from google.oauth2.service_account import Credentials
 import json
 import os
 
-# Conexión a BingX
 exchange = ccxt.bingx()
 
-# Conexión a Google Sheets
 def conectar_sheets():
     creds_json = os.environ.get("GOOGLE_CREDENTIALS")
     if creds_json:
         creds_dict = json.loads(creds_json)
     else:
         creds_dict = json.load(open("credenciales.json"))
-    
     scopes = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
     client = gspread.authorize(creds)
@@ -29,7 +26,7 @@ def inicializar_sheet(sheet):
         sheet.append_row(["Fecha", "Hora", "Tipo", "Precio", "Capital", "Ganancia bruta", "Comisión (0.09%)", "Ganancia neta", "Acumulado"])
 
 def registrar_operacion(sheet, tipo, precio, ganancia_bruta, acumulado):
-        zona_arg = timezone(timedelta(hours=-3))
+    zona_arg = timezone(timedelta(hours=-3))
     ahora = datetime.now(zona_arg)
     comision = precio * 0.0009
     ganancia_neta = ganancia_bruta - comision

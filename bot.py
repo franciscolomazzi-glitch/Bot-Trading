@@ -1,7 +1,7 @@
 import ccxt
 import config
 import time
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import gspread
 from google.oauth2.service_account import Credentials
 import json
@@ -29,7 +29,8 @@ def inicializar_sheet(sheet):
         sheet.append_row(["Fecha", "Hora", "Tipo", "Precio", "Capital", "Ganancia bruta", "Comisión (0.09%)", "Ganancia neta", "Acumulado"])
 
 def registrar_operacion(sheet, tipo, precio, ganancia_bruta, acumulado):
-    ahora = datetime.now()
+    zona_arg = timezone(timedelta(hours=-3))
+ahora = datetime.now(zona_arg)
     comision = precio * 0.0009
     ganancia_neta = ganancia_bruta - comision
     sheet.append_row([

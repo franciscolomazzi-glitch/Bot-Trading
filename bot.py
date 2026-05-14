@@ -2,42 +2,47 @@ import ccxt
 import config
 import time
 from datetime import datetime
-import openpyxl
-from openpyxl import load_workbook
+import gspread
+from google.oauth2.service_account import Credentials
+import json
 import os
 
-# Conexión a Binance (solo lectura de precios)
+# Conexión a BingX
 exchange = ccxt.bingx()
 
-# Archivo Excel
-ARCHIVO_EXCEL = "operaciones.xlsx"
+# Conexión a Google Sheets
+def conectar_sheets():
+    creds_json = os.environ.get("GOOGLE_CREDENTIALS")
+    if creds_json:
+        creds_dict = json.loads(creds_json)
+    else:
+        creds_dict = json.load(open("credenciales.json"))
+    
+    scopes = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+    client = gspread.authorize(creds)
+    sheet = client.open("Bot Trading").sheet1
+    return sheet
 
-def inicializar_excel():
-    if not os.path.exists(ARCHIVO_EXCEL):
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "Operaciones"
-        ws.append(["Fecha", "Hora", "Tipo", "Precio", "Capital", "Ganancia bruta", "Comisión (0.09%)", "Ganancia neta", "Acumulado"])
-        wb.save(ARCHIVO_EXCEL)
+def inicializar_sheet(sheet):
+    if sheet.row_count == 0 or sheet.cell(1, 1).value != "Fecha":
+        sheet.append_row(["Fecha", "Hora", "Tipo", "Precio", "Capital", "Ganancia bruta", "Comisión (0.09%)", "Ganancia neta", "Acumulado"])
 
-def registrar_operacion(tipo, precio, ganancia_bruta, acumulado):
-    wb = load_workbook(ARCHIVO_EXCEL)
-    ws = wb.active
+def registrar_operacion(sheet, tipo, precio, ganancia_bruta, acumulado):
     ahora = datetime.now()
     comision = precio * 0.0009
     ganancia_neta = ganancia_bruta - comision
-    ws.append([
+    sheet.append_row([
         ahora.strftime("%d/%m/%Y"),
         ahora.strftime("%H:%M:%S"),
         tipo,
         precio,
-        config.TOTAL_CAPITAL / config.GRID_LEVELS,
+        round(config.TOTAL_CAPITAL / config.GRID_LEVELS, 2),
         round(ganancia_bruta, 4),
         round(comision, 4),
         round(ganancia_neta, 4),
         round(acumulado, 4)
     ])
-    wb.save(ARCHIVO_EXCEL)
 
 def obtener_precio_actual():
     ticker = exchange.fetch_ticker(config.SYMBOL)
@@ -53,8 +58,9 @@ def calcular_grilla():
     return niveles
 
 def ejecutar_bot():
-    inicializar_excel()
     print("🤖 Bot iniciado en modo PAPER TRADING (sin dinero real)")
+    sheet = conectar_sheets()
+    inicializar_sheet(sheet)
     print(f"Par: {config.SYMBOL}")
     grilla = calcular_grilla()
     print(f"Niveles de grilla: {grilla}")
@@ -77,12 +83,12 @@ def ejecutar_bot():
 
                 if ultimo_precio and ultimo_precio > nivel_compra and precio_actual <= nivel_compra:
                     print(f"🟢 COMPRA simulada en ${nivel_compra:,.2f}")
-                    registrar_operacion("COMPRA", nivel_compra, 0, ganancias)
+                    registrar_operacion(sheet, "COMPRA", nivel_compra, 0, ganancias)
 
                 if ultimo_precio and ultimo_precio < nivel_venta and precio_actual >= nivel_venta:
                     ganancias += ganancia_celda
-                    print(f"🔴 VENTA simulada en ${nivel_venta:,.2f} | Ganancia celda: ${ganancia_celda:.2f} | Total acumulado: ${ganancias:.2f}")
-                    registrar_operacion("VENTA", nivel_venta, ganancia_celda, ganancias)
+                    print(f"🔴 VENTA simulada en ${nivel_venta:,.2f} | Ganancia: ${ganancia_celda:.2f} | Total: ${ganancias:.2f}")
+                    registrar_operacion(sheet, "VENTA", nivel_venta, ganancia_celda, ganancias)
 
             ultimo_precio = precio_actual
             time.sleep(10)

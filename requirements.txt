@@ -1,2 +1,4 @@
 ccxt
 openpyxl
+gspread
+google-auth

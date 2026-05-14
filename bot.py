@@ -21,7 +21,7 @@ def conectar_sheets():
     scopes = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
     client = gspread.authorize(creds)
-    sheet = client.open("Bot Trading").sheet1
+    sheet = client.open("Bot trading").sheet1
     return sheet
 
 def inicializar_sheet(sheet):

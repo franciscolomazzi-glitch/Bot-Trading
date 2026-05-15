@@ -28,7 +28,7 @@ def inicializar_sheet(sheet):
 def registrar_operacion(sheet, tipo, precio, ganancia_bruta, acumulado):
     zona_arg = timezone(timedelta(hours=-3))
     ahora = datetime.now(zona_arg)
-    comision = (config.TOTAL_CAPITAL / config.GRID_LEVELS) * 0.0009
+    comision = (config.TOTAL_CAPITAL / config.GRID_LEVELS) * 0.002
     ganancia_neta = ganancia_bruta - comision
     sheet.append_row([
         ahora.strftime("%d/%m/%Y"),

@@ -23,19 +23,24 @@ def conectar_sheets():
 
 def inicializar_sheet(sheet):
     if sheet.row_count == 0 or sheet.cell(1, 1).value != "Fecha":
-        sheet.append_row(["Fecha", "Hora", "Tipo", "Precio", "Capital", "Ganancia bruta", "Comisión (0.09%)", "Ganancia neta", "Acumulado"])
+        sheet.append_row(["Fecha", "Hora", "Tipo", "Precio", "Capital", "BTC operado", "BTC acumulado", "Precio promedio compra", "Ganancia bruta", "Comisión (0.2%)", "Ganancia neta", "Acumulado"])
 
-def registrar_operacion(sheet, tipo, precio, ganancia_bruta, acumulado):
+def registrar_operacion(sheet, tipo, precio, ganancia_bruta, acumulado, btc_acumulado, precio_promedio):
     zona_arg = timezone(timedelta(hours=-3))
     ahora = datetime.now(zona_arg)
-    comision = (config.TOTAL_CAPITAL / config.GRID_LEVELS) * 0.002
+    capital_nivel = config.TOTAL_CAPITAL / config.GRID_LEVELS
+    comision = capital_nivel * 0.002
     ganancia_neta = ganancia_bruta - comision
+    btc_operado = capital_nivel / precio
     sheet.append_row([
         ahora.strftime("%d/%m/%Y"),
         ahora.strftime("%H:%M:%S"),
         tipo,
         precio,
-        round(config.TOTAL_CAPITAL / config.GRID_LEVELS, 2),
+        round(capital_nivel, 2),
+        round(btc_operado, 6),
+        round(btc_acumulado, 6),
+        round(precio_promedio, 2) if precio_promedio else 0,
         round(ganancia_bruta, 4),
         round(comision, 4),
         round(ganancia_neta, 4),
@@ -68,6 +73,8 @@ def ejecutar_bot():
 
     ultimo_precio = None
     ganancias = 0
+    btc_acumulado = 0
+    compras_sin_vender = []
 
     while True:
         try:
@@ -78,15 +85,23 @@ def ejecutar_bot():
                 nivel_compra = grilla[i]
                 nivel_venta = grilla[i + 1]
                 ganancia_celda = (nivel_venta - nivel_compra) / nivel_compra * capital_por_nivel
+                btc_nivel = capital_por_nivel / nivel_compra
 
                 if ultimo_precio and ultimo_precio > nivel_compra and precio_actual <= nivel_compra:
-                    print(f"🟢 COMPRA simulada en ${nivel_compra:,.2f}")
-                    registrar_operacion(sheet, "COMPRA", nivel_compra, 0, ganancias)
+                    btc_acumulado += btc_nivel
+                    compras_sin_vender.append(nivel_compra)
+                    precio_promedio = sum(compras_sin_vender) / len(compras_sin_vender)
+                    print(f"🟢 COMPRA en ${nivel_compra:,.2f} | BTC acumulado: {btc_acumulado:.6f} | Precio promedio: ${precio_promedio:,.2f}")
+                    registrar_operacion(sheet, "COMPRA", nivel_compra, 0, ganancias, btc_acumulado, precio_promedio)
 
                 if ultimo_precio and ultimo_precio < nivel_venta and precio_actual >= nivel_venta:
                     ganancias += ganancia_celda
-                    print(f"🔴 VENTA simulada en ${nivel_venta:,.2f} | Ganancia: ${ganancia_celda:.2f} | Total: ${ganancias:.2f}")
-                    registrar_operacion(sheet, "VENTA", nivel_venta, ganancia_celda, ganancias)
+                    if compras_sin_vender:
+                        compras_sin_vender.pop(0)
+                    btc_acumulado = max(0, btc_acumulado - btc_nivel)
+                    precio_promedio = sum(compras_sin_vender) / len(compras_sin_vender) if compras_sin_vender else 0
+                    print(f"🔴 VENTA en ${nivel_venta:,.2f} | Ganancia: ${ganancia_celda:.2f} | Total: ${ganancias:.2f}")
+                    registrar_operacion(sheet, "VENTA", nivel_venta, ganancia_celda, ganancias, btc_acumulado, precio_promedio)
 
             ultimo_precio = precio_actual
             time.sleep(10)
